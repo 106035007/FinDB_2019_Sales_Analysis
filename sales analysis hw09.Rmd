@@ -1,0 +1,115 @@
+---
+title: "SalesAnalysis"
+author: "許循閒"
+date: "2019年4月29日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+
+#library(tidyquant)
+
+library(readxl)
+library(writexl)
+```
+#安裝並執行tidyverse、lubridate、tidyquant、readxl、writexl
+讀excel檔的程式readxl、writexl
+
+```{r}
+bikes_tbl <- read_excel("bikes.xlsx")
+bikeshops_tbl <- read_excel("bikeshops.xlsx")
+orderlines_tbl <- read_excel("orderlines.xlsx")
+
+bikes_tbl
+orderlines_tbl %>% glimpse()
+```
+#讀取excel資料檔
+讀excel檔用read_excel
+
+讀取bikes.xlsx、bikeshops.xlsx和
+
+orderlines_tbl %>% glimpse() - 透過一個管道將orderlines_tbl丟到glimpse()中
+
+bikes_tbl - 腳踏車型號資料
+
+bikeshops_tbl - 腳踏車商家資料
+
+orderlines_tbl - 腳踏車訂單編號資料
+
+```{r}
+left_join(orderlines_tbl, bikes_tbl, by = c("product.id"="bike.id"))
+bikes_orderlines_joined_tbl<-orderlines_tbl %>% left_join(bikes_tbl, by = c("product.id" = "bike.id")) %>% 
+    left_join(bikeshops_tbl, by = c("customer.id" = "bikeshop.id"))
+
+bikes_orderlines_joined_tbl
+
+orderlines_tbl %>% left_join(bikes_tbl, by = c("product.id"="bike.id")) %>% 
+                   left_join(bikeshops_tbl, by = c("customer.id" = "bikeshop.id"))
+```
+#連結資料
+將訂單編號和腳踏車型號2個資料連結
+
+再將第一個連接好的資料跟腳踏車商家資料連結
+
+orderlines_tbl %>% left_join(bikes_tbl, by = c("product.id"="bike.id")) %>% 
+                   left_join(bikeshops_tbl, by = c("customer.id" = "bikeshop.id")) - 透過一個管道將orderlines_tbl丟到left_join中
+
+```{r}
+bike_orderlines_wrangled_tbl <- bikes_orderlines_joined_tbl %>%
+  
+  separate(description,
+           into = c("category.1", "category.2", "frame.material"),
+           sep = " - ",
+           remove = TRUE) %>%
+  
+  separate(location,
+           into = c("city", "state"),
+           sep  = ", ",
+           remove = FALSE) %>%
+  
+  mutate(total.price = price * quantity) %>%
+  
+
+  select(-...1, -location) %>%
+  select(-ends_with(".id")) %>%
+  
+  bind_cols(bikes_orderlines_joined_tbl %>% select(order.id)) %>%
+  
+
+  select(contains("date"), contains("id"), contains("order"),
+         quantity, price, total.price,
+         everything()) %>%
+  
+
+  rename(order_date = order.date) %>%
+  set_names(names(.) %>% str_replace_all("\\.", "_")) 
+
+bike_orderlines_wrangled_tbl %>% glimpse()
+```
+#處理資料
+將資料中description的部分分為category.1、category.2、frame.material 3個部分
+
+將資料中location的部分分為city(城市)、state(州) 2個部分
+
+將價格部份延長計算price * quantity(用mutate函數)
+
+選擇要刪除的部分
+
+ends_with(".id") - 用ends_with函數將所有名稱改成.id
+
+重新將欄命名，包含date、id、order等
+
+將order_date = order.date重新命名
+
+將有.的部分改用_取代重新命名
+
+bike_orderlines_wrangled_tbl %>% glimpse() - 透過一個管道將bike_orderlines_wrangled_tbl丟到glimpse()中
+
+
+
