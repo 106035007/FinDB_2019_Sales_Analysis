@@ -8,7 +8,9 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+##1. 將02_sales_analysis_code_checkpoint_4.R轉換為Rmarkdown並發表在RPubs上傳。
 
+#要加上13-94的資料才可執行
 ```{r}
 library(tidyverse)
 library(lubridate)
@@ -17,14 +19,32 @@ library(lubridate)
 
 library(readxl)
 library(writexl)
+```
+#安裝並執行tidyverse、lubridate、tidyquant、readxl、writexl
+讀excel檔的程式readxl、writexl
 
+```{r}
 bikes_tbl <- read_excel("bikes.xlsx")
 bikeshops_tbl <- read_excel("bikeshops.xlsx")
 orderlines_tbl <- read_excel("orderlines.xlsx")
 
 bikes_tbl
 orderlines_tbl %>% glimpse()
+```
+#讀取excel資料檔
+讀excel檔用read_excel
 
+讀取bikes.xlsx、bikeshops.xlsx和
+
+orderlines_tbl %>% glimpse() - 透過一個管道將orderlines_tbl丟到glimpse()中
+
+bikes_tbl - 腳踏車型號資料
+
+bikeshops_tbl - 腳踏車商家資料
+
+orderlines_tbl - 腳踏車訂單編號資料
+
+```{r}
 left_join(orderlines_tbl, bikes_tbl, by = c("product.id"="bike.id"))
 bikes_orderlines_joined_tbl<-orderlines_tbl %>% left_join(bikes_tbl, by = c("product.id" = "bike.id")) %>% 
     left_join(bikeshops_tbl, by = c("customer.id" = "bikeshop.id"))
@@ -33,7 +53,16 @@ bikes_orderlines_joined_tbl
 
 orderlines_tbl %>% left_join(bikes_tbl, by = c("product.id"="bike.id")) %>% 
                    left_join(bikeshops_tbl, by = c("customer.id" = "bikeshop.id"))
+```
+#連結資料
+將訂單編號和腳踏車型號2個資料連結
 
+再將第一個連接好的資料跟腳踏車商家資料連結
+
+orderlines_tbl %>% left_join(bikes_tbl, by = c("product.id"="bike.id")) %>% 
+                   left_join(bikeshops_tbl, by = c("customer.id" = "bikeshop.id")) - 透過一個管道將orderlines_tbl丟到left_join中
+
+```{r}
 bike_orderlines_wrangled_tbl <- bikes_orderlines_joined_tbl %>%
   
   separate(description,
@@ -49,7 +78,7 @@ bike_orderlines_wrangled_tbl <- bikes_orderlines_joined_tbl %>%
   mutate(total.price = price * quantity) %>%
   
 
-  select(-...1, -location) %>%
+  select(-1, -location) %>%
   select(-ends_with(".id")) %>%
   
   bind_cols(bikes_orderlines_joined_tbl %>% select(order.id)) %>%
@@ -65,7 +94,24 @@ bike_orderlines_wrangled_tbl <- bikes_orderlines_joined_tbl %>%
 
 bike_orderlines_wrangled_tbl %>% glimpse()
 ```
-#要加上以上資料才可執行
+#處理資料
+將資料中description的部分分為category.1、category.2、frame.material 3個部分
+
+將資料中location的部分分為city(城市)、state(州) 2個部分
+
+將價格部份延長計算price * quantity(用mutate函數)
+
+選擇要刪除的部分
+
+ends_with(".id") - 用ends_with函數將所有名稱改成.id
+
+重新將欄命名，包含date、id、order等
+
+將order_date = order.date重新命名
+
+將有.的部分改用_取代重新命名
+
+bike_orderlines_wrangled_tbl %>% glimpse() - 透過一個管道將bike_orderlines_wrangled_tbl丟到glimpse()中
 
 ```{r}
 sales_by_year_tbl <- bike_orderlines_wrangled_tbl %>%
@@ -161,16 +207,15 @@ title = "Revenue by Year and Category 2" - 標題名稱為Revenue by Year and Ca
 
 P - 將圖片輸出
 
-```{r}
+
+#存圖檔的方式
 pdf("ggplot.pdf")
 print(p)
 dev.off()
 
 ggsave("myplot.pdf")
 ggsave("myplot.png")
-ggsave("myplot.pdf", plot=p)
-```
-#存圖檔的方式
+ggsave("myplot.pdf", plot=p)    (因為跑步出來所以文字呈現)
 
 ```{r}
 fs::dir_create("data_wrangled_student")
@@ -192,8 +237,39 @@ CSV檔用write_csv函數
 RDS檔用write_rds函數
 
 
+##2. 下載台灣上市公司(不含TDR)之日收盤調整後股價、上市別、產業別，從2010/01/01-2018/12/31，並存為TXT檔。
+```{r}
+library(data.table)
+```
+#下載並執行data.table
 
+```{r}
+d.price = read.table("C:/Users/Sarah/Desktop/FinDB_2019_Sales_Analysis/Price_2010-2018_day.txt")
+d.price = d.price[,-2]
+colnames(d.price) = c("id", "", "", "date","close")
+head(d.price)
+d.price
+```
+用read.table函數讀txt資料
 
+欄位名稱為"id","date","close"
+
+head(d.price)顯示前幾筆資料
+
+```{r}
+dprice.reorder = dcast(d.price,date~id)
+dprice.reorder
+dim(dprice.reorder)
+head(dprice.reorder)
+```
+用dcast將txt檔轉成xts檔(時間序列格式)
+
+head(dprice.reorder)顯示前幾筆資料
+
+```{r}
+write_rds(dprice.reorder,"d_price.rds")
+```
+#將檔案輸出儲存成rds格式
 
 
 

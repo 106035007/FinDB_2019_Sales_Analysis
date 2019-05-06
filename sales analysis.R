@@ -213,3 +213,7 @@ bike_orderlines_wrangled_tbl %>%
   write_rds("data_wrangled_student/bike_orderlines.rds")
 
 
+
+
+
+
