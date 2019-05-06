@@ -1,0 +1,201 @@
+---
+title: "HW10"
+author: "許循閒"
+date: "2019年5月6日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+
+#library(tidyquant)
+
+library(readxl)
+library(writexl)
+
+bikes_tbl <- read_excel("bikes.xlsx")
+bikeshops_tbl <- read_excel("bikeshops.xlsx")
+orderlines_tbl <- read_excel("orderlines.xlsx")
+
+bikes_tbl
+orderlines_tbl %>% glimpse()
+
+left_join(orderlines_tbl, bikes_tbl, by = c("product.id"="bike.id"))
+bikes_orderlines_joined_tbl<-orderlines_tbl %>% left_join(bikes_tbl, by = c("product.id" = "bike.id")) %>% 
+    left_join(bikeshops_tbl, by = c("customer.id" = "bikeshop.id"))
+
+bikes_orderlines_joined_tbl
+
+orderlines_tbl %>% left_join(bikes_tbl, by = c("product.id"="bike.id")) %>% 
+                   left_join(bikeshops_tbl, by = c("customer.id" = "bikeshop.id"))
+
+bike_orderlines_wrangled_tbl <- bikes_orderlines_joined_tbl %>%
+  
+  separate(description,
+           into = c("category.1", "category.2", "frame.material"),
+           sep = " - ",
+           remove = TRUE) %>%
+  
+  separate(location,
+           into = c("city", "state"),
+           sep  = ", ",
+           remove = FALSE) %>%
+  
+  mutate(total.price = price * quantity) %>%
+  
+
+  select(-...1, -location) %>%
+  select(-ends_with(".id")) %>%
+  
+  bind_cols(bikes_orderlines_joined_tbl %>% select(order.id)) %>%
+  
+
+  select(contains("date"), contains("id"), contains("order"),
+         quantity, price, total.price,
+         everything()) %>%
+  
+
+  rename(order_date = order.date) %>%
+  set_names(names(.) %>% str_replace_all("\\.", "_")) 
+
+bike_orderlines_wrangled_tbl %>% glimpse()
+```
+#要加上以上資料才可執行
+
+```{r}
+sales_by_year_tbl <- bike_orderlines_wrangled_tbl %>%
+  select(order_date, total_price) %>%
+  mutate(year = year(order_date)) %>%
+  group_by(year) %>%
+  summarize(sales = sum(total_price)) %>%
+  ungroup() %>%
+  mutate(sales_text = scales::dollar(sales))
+
+sales_by_year_tbl
+```
+#Sales by Year - Manipulate
+select函數 - 選擇要的欄位
+
+mutate函數 - 新增欄位
+
+summarize函數 - 將數值整合(group_by(year)以年來計算)
+
+mutate(sales_text = scales::dollar(sales)) - 將數字以會計風勢呈現
+
+```{r}
+sales_by_year_tbl %>%
+  ggplot(aes(x = year, y = sales)) +
+  geom_col(fill = "#2c3e50") +
+  geom_label(aes(label = sales_text)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  #theme_tq() +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(
+    title = "Revenue by Year",
+    subtitle = "Upward trend",
+    x = "",
+    y = "Revenue"
+  )
+```
+#Sales by Year - Visualize
+用ggplot畫圖
+
+geom_col - 劃出直方圖且可將文字標在圖表上
+
+geom_label - 設置標籤
+
+lm - 回歸線/se - 標準差
+
+對X Y軸命名(x = "" - 已經是年的資料所以用""表示、y = "Revenue" - 名稱為收入)
+
+```{r}
+sales_by_year_cat_2_tbl <- bike_orderlines_wrangled_tbl %>%
+  select(order_date, total_price, category_2) %>%
+  mutate(year = year(order_date)) %>%
+  group_by(year, category_2) %>%
+  summarise(sales = sum(total_price)) %>%
+  ungroup() %>%
+  mutate(sales_text = scales::dollar(sales))
+
+sales_by_year_cat_2_tbl
+```
+#Sales by Year and Category 2 - Manipulate
+將Y軸的名稱資訊改為會計的數字格式
+
+mutate函數 - 新增欄位
+
+mutate(sales_text = scales::dollar(sales)) - 將數字以會計風勢呈現
+
+```{r}
+P = sales_by_year_cat_2_tbl %>%
+  ggplot(aes(x = year, y = sales, fill = category_2)) +
+  geom_col() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~ category_2, ncol = 3, scales = "free_y") +
+  #theme_tq() +
+  #scale_fill_tq() +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(
+    title = "Revenue by Year and Category 2",
+    subtitle = "Each product category has an upward trend",
+    x = "",
+    y = "Revenue",
+    fill = "Product Secondary Category"
+  )
+
+P
+```
+#Sales by Year and Category 2 - Visualize
+用ggplot畫圖
+
+lm - 回歸線/se - 標準差
+
+title = "Revenue by Year and Category 2" - 標題名稱為Revenue by Year and Category 2
+
+副標題為Each product category has an upward trend
+
+P - 將圖片輸出
+
+```{r}
+pdf("ggplot.pdf")
+print(p)
+dev.off()
+
+ggsave("myplot.pdf")
+ggsave("myplot.png")
+ggsave("myplot.pdf", plot=p)
+```
+#存圖檔的方式
+
+```{r}
+fs::dir_create("data_wrangled_student")
+
+bike_orderlines_wrangled_tbl %>%
+  write_xlsx("data_wrangled_student/bike_orderlines.xlsx")
+
+bike_orderlines_wrangled_tbl %>%
+  write_csv("data_wrangled_student/bike_orderlines.csv")
+
+bike_orderlines_wrangled_tbl %>%
+  write_rds("data_wrangled_student/bike_orderlines.rds")
+```
+#Writing Files
+Excel檔用write_xlsx函數
+
+CSV檔用write_csv函數
+
+RDS檔用write_rds函數
+
+
+
+
+
+
+
+
+

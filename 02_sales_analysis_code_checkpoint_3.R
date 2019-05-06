@@ -21,11 +21,11 @@ library(writexl)
 
 ?read_excel()
 
-bikes_tbl <- read_excel(path = "00_data/bike_sales/data_raw/bikes.xlsx")
+bikes_tbl <- read_excel(path = "bikes.xlsx")
 
-bikeshops_tbl <- read_excel("00_data/bike_sales/data_raw/bikeshops.xlsx")
+bikeshops_tbl <- read_excel("bikeshops.xlsx")
 
-orderlines_tbl <- read_excel("00_data/bike_sales/data_raw/orderlines.xlsx")
+orderlines_tbl <- read_excel("orderlines.xlsx")
 
 
 
@@ -127,8 +127,10 @@ sales_by_year_tbl %>%
     ggplot(aes(x = year, y = sales)) +
     
     # Geometries
+    # palette_light()
     geom_col(fill = "#2c3e50") +
     geom_label(aes(label = sales_text)) +
+    # geom_smooth()
     geom_smooth(method = "lm", se = FALSE) +
     
     # Formatting

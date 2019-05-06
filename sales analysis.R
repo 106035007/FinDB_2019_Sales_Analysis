@@ -84,14 +84,132 @@ bike_orderlines_wrangled_tbl <- bikes_orderlines_joined_tbl %>%
 bike_orderlines_wrangled_tbl %>% glimpse()
 
 
+# 6.0 Business Insights ----
 
 
+# 6.1 Sales by Year ----
+
+# Step 1 - Manipulate
+
+sales_by_year_tbl <- bike_orderlines_wrangled_tbl %>%
+  
+  # Selecting columns to focus on and adding a year column
+  select(order_date, total_price) %>%
+  mutate(year = year(order_date)) %>%
+  
+  # Grouping by year, and summarizing sales
+  group_by(year) %>%
+  summarize(sales = sum(total_price)) %>%
+  ungroup() %>%
+  
+  # $ Format Text
+  mutate(sales_text = scales::dollar(sales))
+
+sales_by_year_tbl
 
 
+# Step 2 - Visualize
+
+sales_by_year_tbl %>%
+  
+  # Setup canvas with year (x-axis) and sales (y-axis)
+  ggplot(aes(x = year, y = sales)) +
+  
+  # Geometries
+  geom_col(fill = "#2c3e50") +
+  geom_label(aes(label = sales_text)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  
+  # Formatting
+  theme_tq() +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(
+    title = "Revenue by Year",
+    subtitle = "Upward trend",
+    x = "",
+    y = "Revenue"
+  )
+
+# 6.2 Sales by Year and Category 2 ----
 
 
+# Step 1 - Manipulate
+
+sales_by_year_cat_2_tbl <- bike_orderlines_wrangled_tbl %>%
+  
+  # Selecting columns and add a year
+  select(order_date, total_price, category_2) %>%
+  mutate(year = year(order_date)) %>%
+  
+  # Groupby and Summarize year and category 2
+  group_by(year, category_2) %>%
+  summarise(sales = sum(total_price)) %>%
+  ungroup() %>%
+  
+  # Format $ Text
+  mutate(sales_text = scales::dollar(sales))
 
 
+sales_by_year_cat_2_tbl
 
+
+# Step 2 - Visualize
+
+P = sales_by_year_cat_2_tbl %>%
+  
+  # Set up x, y, fill 
+  ggplot(aes(x = year, y = sales, fill = category_2)) +
+  
+  # Geometries
+  geom_col() +
+  geom_smooth(method = "lm", se = FALSE) +
+  
+  # Facet
+  facet_wrap(~ category_2, ncol = 3, scales = "free_y") +
+  
+  # Formatting
+  #theme_tq() +
+  #scale_fill_tq() +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(
+    title = "Revenue by Year and Category 2",
+    subtitle = "Each product category has an upward trend",
+    x = "",
+    y = "Revenue",
+    fill = "Product Secondary Category"
+  )
+
+P
+
+#
+pdf("ggplot.pdf")
+print(p)
+dev.off()
+
+ggsave("myplot.pdf")
+ggsave("myplot.png")
+ggsave("myplot.pdf", plot=p)
+
+
+# 7.0 Writing Files ----
+
+fs::dir_create("data_wrangled_student")
+
+# 7.1 Excel ----
+
+bike_orderlines_wrangled_tbl %>%
+  write_xlsx("data_wrangled_student/bike_orderlines.xlsx")
+
+
+# 7.2 CSV ----
+
+bike_orderlines_wrangled_tbl %>%
+  write_csv("data_wrangled_student/bike_orderlines.csv")
+
+
+# 7.3 RDS ----
+
+bike_orderlines_wrangled_tbl %>%
+  write_rds("data_wrangled_student/bike_orderlines.rds")
 
 
