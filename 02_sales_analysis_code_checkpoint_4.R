@@ -2,6 +2,7 @@
 # JUMPSTART: First Sales Analysis ----
 
 # 1.0 Load libraries ----
+rm(list=ls())
 
 # Work horse packages
 library(tidyverse)
@@ -21,11 +22,11 @@ library(writexl)
 
 ?read_excel()
 
-bikes_tbl <- read_excel(path = "00_data/bike_sales/data_raw/bikes.xlsx")
+bikes_tbl <- read_excel(path = "bikes.xlsx")
 
-bikeshops_tbl <- read_excel("00_data/bike_sales/data_raw/bikeshops.xlsx")
+bikeshops_tbl <- read_excel("bikeshops.xlsx")
 
-orderlines_tbl <- read_excel("00_data/bike_sales/data_raw/orderlines.xlsx")
+orderlines_tbl <- read_excel("orderlines.xlsx")
 
 
 
@@ -66,6 +67,7 @@ bike_orderlines_wrangled_tbl <- bike_orderlines_joined_tbl %>%
              into = c("category.1", "category.2", "frame.material"),
              sep = " - ",
              remove = TRUE) %>%
+    
     
     # Separate location into city and state
     separate(location,
@@ -165,7 +167,7 @@ sales_by_year_cat_2_tbl
 
 # Step 2 - Visualize
 
-sales_by_year_cat_2_tbl %>%
+p<-sales_by_year_cat_2_tbl %>%
     
     # Set up x, y, fill 
     ggplot(aes(x = year, y = sales, fill = category_2)) +
@@ -175,7 +177,7 @@ sales_by_year_cat_2_tbl %>%
     geom_smooth(method = "lm", se = FALSE) +
     
     # Facet
-    facet_wrap(~ category_2, ncol = 3, scales = "free_y") +
+    facet_wrap(~ category_2, ncol = 4, scales = "free_y") +
     
     # Formatting
     theme_tq() +
@@ -189,8 +191,19 @@ sales_by_year_cat_2_tbl %>%
         fill = "Product Secondary Category"
     )
 
+# export graph
+
+pdf("ggplot.pdf")
+print(p)
+dev.off()
+
+#
+ggsave("myplot.pdf")
+ggsave("myplot.png")
+ggsave("myplot1.png", plot = p)
 
 # 7.0 Writing Files ----
+
 
 fs::dir_create("data_wrangled_student")
 

@@ -19,7 +19,7 @@ library(writexl)
 
 # 2.0 Importing Files ----
 
-?read_excel()
+#?read_excel()
 
 bikes_tbl <- read_excel(path = "bikes.xlsx")
 
@@ -41,7 +41,7 @@ orderlines_tbl
 
 # 4.0 Joining Data ----
 
-?left_join
+#?left_join
 
 orderlines_tbl
 
