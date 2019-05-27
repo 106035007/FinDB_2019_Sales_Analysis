@@ -1,0 +1,463 @@
+---
+title: "HW13"
+author: "許循閒"
+date: "2019年5月27日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##checkpoint_3_forcats
+```{r}
+library(tidyverse)
+library(tidyquant)
+
+bike_orderlines_tbl <- read_rds("data_wrangled_student/bike_orderlines.rds")
+bike_orderlines_tbl
+```
+#讀取資料
+執行tidyverse、tidyquant
+
+用read_rds 讀取bike_orderlines.rds 資料
+
+```{r}
+sales_by_cat_2_tbl <- bike_orderlines_tbl %>%
+    select(category_2, total_price) %>%
+    group_by(category_2) %>%
+    summarize(sales = sum(total_price)) %>%
+    ungroup() %>%
+    arrange(desc(sales)) %>%
+    mutate(category_2 = category_2 %>% as_factor() %>% fct_rev())
+```
+
+# Manipulation
+用select函數選擇需要的欄位
+
+用mutate函數新增新的欄位資料
+
+用summarize函數總整所有資料
+
+用group_by函數 - 群組起來
+
+用arrange函數將資料排列整理
+
+desc函數 - 由大到小排列
+
+fct_rev() - 反轉資料
+
+```{r}
+sales_by_cat_2_tbl %>%
+    ggplot(aes(x = sales, y = category_2)) +
+    geom_point(size = 5, color = "#2c3e50") +
+    labs(title = "Sales By Category 2") +
+    scale_x_continuous(labels = scales::dollar_format()) +
+    theme_tq() +
+    expand_limits(x = 0)
+
+plot_sales <- function(data) {
+    data %>%
+        ggplot(aes(x = sales, y = category_2)) +
+        geom_point(size = 5, color = "#2c3e50") +
+        labs(title = "Sales By Category 2") +
+        scale_x_continuous(labels = scales::dollar_format()) +
+        theme_tq() +
+        expand_limits(x = 0)
+}
+
+sales_by_cat_2_tbl %>%
+    plot_sales()
+```
+
+# Plotting
+用geom_point函數畫點
+
+theme_tq() - 美化圖表
+
+plot_sales <- function(data) - 設定函數方便使用
+
+```{r}
+sales_by_cat_2_tbl %>% pull(category_2) %>% levels()
+sales_by_cat_2_tbl %>% pull(category_2) %>% as.numeric()
+```
+
+# Vector
+pull函數 - 將資料拉出
+
+as.numeric() - 數字形式
+
+```{r}
+sales_by_cat_2_tbl %>%
+    mutate(category_2 = category_2 %>% fct_rev() %>% fct_rev()) %>%
+    mutate(
+        label = category_2 %>% as.character(),
+        value = category_2 %>% as.numeric()
+    )
+```
+
+# Tibble
+用mutate函數新增新的欄位資料
+
+label為文字形式
+
+value為數字形式
+
+```{r}
+sales_by_cat_2_tbl %>%
+    mutate(
+        category_2           = as.character(category_2),
+        category_2_as_factor = as_factor(category_2) %>% as.numeric(),
+        category_2_as.factor = as.factor(category_2) %>% as.numeric()
+    )
+```
+
+# Creating Factors: as_factor() vs as.factor()
+用mutate函數新增新的欄位資料
+
+category_2為文字形式
+
+category_2_as_factor、category_2_as.factor為數字形式
+
+as_factor - 以原本的排列作排列
+ 
+as.factor - 以英文字母排列
+
+```{r}
+sales_by_cat_2_tbl %>%
+    arrange(desc(sales)) %>%
+    mutate(sales_negative = -sales) %>%
+    mutate(
+        category_2 = category_2 %>% fct_reorder(sales_negative),
+        values     = category_2 %>% as.numeric()) %>%
+    plot_sales()
+```
+
+# Reordering Factors: fct_reorder() and fct_rev()
+用arrange函數將資料排列整理
+
+desc函數 - 由大到小排列
+
+用mutate函數新增新的欄位資料
+
+fct_reorder函數 - 針對因子排序
+
+category_2為文字形式
+
+```{r}
+sales_by_cat_2_q_tbl <- bike_orderlines_tbl %>%
+    mutate(order_date = order_date %>% floor_date("quarter") %>% ymd()) %>%
+    group_by(category_2, order_date) %>%
+    summarise(sales = sum(total_price)) %>%
+    ungroup()
+
+sales_by_cat_2_q_tbl
+
+
+sales_by_cat_2_q_tbl %>%
+    mutate(category_2 = category_2 %>% fct_reorder2(order_date, sales)) %>%
+    ggplot(aes(x = order_date, y = sales, color = category_2)) +
+    geom_point() +
+    geom_line() +
+    facet_wrap(~ category_2) +
+    theme_tq() +
+    scale_color_tq() +
+    scale_y_continuous(labels = scales::dollar_format(scale = 1e-6, suffix = "M"))
+```
+
+# Time-Based Reordering: fct_reorder2()
+用mutate函數新增新的欄位資料
+
+用summarize函數總整所有資料
+
+用group_by函數 - 群組起來
+
+用geom_point函數畫點
+
+用geom_line函數畫線
+
+facet_wrap函數 - 打資料分成很多小圖
+
+theme_tq() 、scale_color_tq()美化圖表
+
+```{r}
+sales_by_cat_2_tbl %>%
+    mutate(category_2 = category_2 %>% fct_lump(n = 6, 
+                                                w = sales, 
+                                                other_level = "All Other Bike Categories")) %>%
+    group_by(category_2) %>%
+    summarize(sales = sum(sales)) %>%
+    mutate(category_2 = category_2 %>% fct_relevel("All Other Bike Categories", after = 0)) %>%
+    plot_sales()
+```
+
+# Creating "Other" Category - fct_lump() & fct_relevel()
+用mutate函數新增新的欄位資料
+
+用summarize函數總整所有資料
+
+用group_by函數 - 群組起來
+
+fct_lump函數 - 把資料堆疊
+
+fct_relevel函數 - 把資料重新排序
+
+
+
+
+
+##02_ggplot_geometries_1
+```{r}
+library(tidyverse)
+library(lubridate)
+library(tidyquant)
+
+bike_orderlines_tbl <- read_rds("data_wrangled_student/bike_orderlines.rds")
+glimpse(bike_orderlines_tbl)
+```
+#讀取資料
+執行tidyverse、tidyquant、lubridate
+
+用read_rds 讀取bike_orderlines.rds 資料
+
+```{r}
+order_value_tbl <- bike_orderlines_tbl %>%
+    select(order_id, order_line, total_price, quantity) %>%
+    group_by(order_id) %>%
+    summarize(
+        total_quantity = sum(quantity),
+        total_price    = sum(total_price)
+    ) %>%
+    ungroup()
+```
+
+# Data Manipulation(Explain relationship between order value and quantity of bikes sold)
+用select函數選擇需要的欄位
+
+用mutate函數新增新的欄位資料
+
+用summarize函數總整所有資料
+
+用group_by函數 - 群組起來
+
+```{r}
+order_value_tbl %>%
+    ggplot(aes(x = total_quantity, y = total_price)) +
+    geom_point(alpha = 0.5, size = 2) +
+    geom_smooth(method = "lm", se = FALSE)
+```
+
+# Scatter Plot(Explain relationship between order value and quantity of bikes sold)
+用aes設定X與Y軸
+
+用geom_point函數畫點
+
+alpha - 透明度
+
+geom_smooth函數畫平滑線(lm - 回歸)
+
+```{r}
+revenue_by_month_tbl <- bike_orderlines_tbl %>%
+    select(order_date, total_price) %>%
+    mutate(year_month = floor_date(order_date, "months") %>% ymd()) %>%
+    group_by(year_month) %>%
+    summarize(revenue = sum(total_price)) %>%
+    ungroup()
+```
+
+# Data Manipulation(Describe revenue by Month, expose cyclic nature)
+用mutate函數新增新的欄位資料
+
+用summarize函數總整所有資料
+
+用group_by函數 - 群組起來
+
+floor_date函數 - 取第一天的資料
+
+```{r}
+revenue_by_month_tbl %>%
+    ggplot(aes(year_month, revenue)) +
+    geom_line(size = 0.5, linetype = 1) +
+    geom_smooth(method = "loess", span = 0.2)
+```
+
+# Line Plot(Describe revenue by Month, expose cyclic nature)
+用aes設定X與Y軸
+
+用geom_linet函數畫線
+
+geom_smooth函數畫平滑線(loess - 曲線)
+
+```{r}
+revenue_by_category_2_tbl <- bike_orderlines_tbl %>%
+    select(category_2, total_price) %>%
+    group_by(category_2) %>%
+    summarize(revenue = sum(total_price)) %>%
+    ungroup()
+```
+
+# Data Manipulation(Sales by Descriptive Category)
+用select函數選擇需要的欄位
+
+用summarize函數總整所有資料
+
+用group_by函數 - 群組起來
+
+```{r}
+revenue_by_category_2_tbl %>%
+    mutate(category_2 = category_2 %>% as_factor() %>% fct_reorder(revenue)) %>%
+    ggplot(aes(category_2, revenue)) +
+    geom_col(fill = "#2c3e50") + 
+    coord_flip()
+```
+
+# Bar Plot(Sales by Descriptive Category)
+用mutate函數新增新的欄位資料
+
+geom_col函數畫欄
+
+coord_flip()函數 - X與Y軸對調
+
+```{r}
+bike_orderlines_tbl %>%
+    distinct(price, model, frame_material) %>%
+    ggplot(aes(price, fill = frame_material)) +
+    geom_histogram() +
+    facet_wrap(~ frame_material, ncol = 1) +
+    scale_fill_tq() +
+    theme_tq()
+```
+
+# Histogram(Unit price of bicylce, segmenting by frame material)
+distinct函數 - 把重複資料刪除取唯一一個
+
+用aes設定X與Y軸
+
+geom_histogram()畫直方圖
+
+scale_fill_tq()、theme_tq() - 用來美化圖表
+
+facet_wrap函數 - 打資料分成很多小圖
+
+```{r}
+bike_orderlines_tbl %>%
+    distinct(price, model, frame_material) %>%
+    ggplot(aes(price, fill = frame_material)) +
+    geom_density(alpha = 0.5) +
+    # facet_wrap(~ frame_material, ncol = 1) +
+    scale_fill_tq() +
+    theme_tq() +
+    theme(legend.position = "bottom")
+```
+
+# Density(Unit price of bicylce, segmenting by frame material)
+distinct函數 - 把重複資料刪除取唯一一個
+
+用aes設定X與Y軸
+
+geom_density畫曲線分布圖
+
+scale_fill_tq()、theme_tq() - 用來美化圖表
+
+```{r}
+unit_price_by_cat_2_tbl <- bike_orderlines_tbl %>%
+    select(category_2, model, price) %>%
+    distinct() %>%
+    mutate(category_2 = as_factor(category_2) %>% fct_reorder(price))
+```
+
+# Data Manipulation(Unit price of model, segmenting by category 2)
+distinct函數 - 把重複資料刪除取唯一一個
+
+用select函數選擇需要的欄位
+
+用mutate函數新增新的欄位資料
+
+```{r}
+unit_price_by_cat_2_tbl %>%
+    ggplot(aes(category_2, price)) +
+    geom_boxplot() +
+    coord_flip() +
+    theme_tq()
+```
+
+# Box Plot(Unit price of model, segmenting by category 2)
+用aes設定X與Y軸
+
+geom_boxplot畫盒狀圖
+
+coord_flip()函數 - X與Y軸對調
+
+theme_tq()美化圖表
+
+```{r}
+unit_price_by_cat_2_tbl %>%
+    ggplot(aes(category_2, price)) +
+    geom_jitter(width = 0.15, color = "#2c3e50") +
+    geom_violin(alpha = 0.5) +
+    coord_flip() +
+    theme_tq()
+```
+
+# Violin Plot & Jitter Plot(Unit price of model, segmenting by category 2)
+用aes設定X與Y軸
+
+coord_flip()函數 - X與Y軸對調
+
+theme_tq()美化圖表
+
+```{r}
+revenue_by_year_tbl <- bike_orderlines_tbl %>%
+    select(order_date, total_price) %>%
+    mutate(year = year(order_date)) %>%
+    group_by(year) %>%
+    summarize(revenue = sum(total_price)) %>%
+    ungroup()
+```
+
+# Data Manipulation(Exposing sales over time, highlighting outlier)
+用select函數選擇需要的欄位
+
+用mutate函數新增新的欄位資料
+
+用summarize函數總整所有資料
+
+用group_by函數 - 群組起來
+
+```{r}
+revenue_by_year_tbl %>%
+    # mutate(revenue_text = scales::dollar(revenue, scale = 1e-6, suffix = "M")) %>%
+    ggplot(aes(year, revenue)) +
+    geom_col(fill = "#2c3e50") +
+    geom_smooth(method = "lm", se = FALSE) +
+    geom_text(aes(label =  scales::dollar(revenue, scale = 1e-6, suffix = "M")), 
+              vjust = 1.5, color = "white") +
+    geom_label(label =  "Major Demand This Year",
+               vjust = -0.5, 
+               size  = 5,
+               fill  = "#1f78b4",
+               color = "white",
+               fontface = "italic",
+               data = revenue_by_year_tbl %>%
+                   filter(year %in% c(2013))) + 
+    expand_limits(y = 2e7) +
+    theme_tq()
+```
+
+# Adding text to bar chart
+# Filtering labels to highlight a point(Exposing sales over time, highlighting outlier)
+用aes設定X與Y軸
+
+geom_col函數畫欄
+
+geom_smooth函數畫平滑線
+
+用geom_text函數把文字標示在圖表上
+
+用geom_label函數修改標籤資料
+
+theme_tq()美化圖表
+
+
+
+
+

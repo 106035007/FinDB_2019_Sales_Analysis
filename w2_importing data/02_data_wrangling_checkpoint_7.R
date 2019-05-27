@@ -5,9 +5,9 @@
 library(tidyverse)
 library(readxl)
 
-bikes_tbl           <- read_excel("bikes.xlsx")
-orderlines_tbl      <- read_excel("orderlines.xlsx")
-bike_orderlines_tbl <- read_rds("data_wrangled_student/bike_orderlines.rds")
+bikes_tbl           <- read_excel("00_data/bike_sales/data_raw/bikes.xlsx")
+orderlines_tbl      <- read_excel("00_data/bike_sales/data_raw/orderlines.xlsx")
+bike_orderlines_tbl <- read_rds("00_data/bike_sales/data_wrangled/bike_orderlines.rds")
 
 
 bikes_tbl

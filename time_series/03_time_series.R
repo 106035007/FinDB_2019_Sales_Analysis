@@ -12,6 +12,9 @@ glimpse(bike_orderlines_tbl)
 
 # 1.0 Date & Lubridate Basics ----
 
+
+
+
 # 1.1 Character vs Date/Datetime
 
 
@@ -27,6 +30,9 @@ glimpse(bike_orderlines_tbl)
 # 1.3 Lubridate Functions
 
 # Conversion
+
+
+
 
 
 
