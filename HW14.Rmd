@@ -1,0 +1,295 @@
+---
+title: "許循閒"
+author: "HW14"
+date: "2019年6月3日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(tidyquant)
+library(lubridate)
+library(broom)
+
+bike_orderlines_tbl <- read_rds("data_wrangled_student/bike_orderlines.rds")
+
+glimpse(bike_orderlines_tbl)
+```
+執行readxl、tidyverse、tidyquant、lubridate、broom
+
+用read_rds讀取檔案
+
+```{r}
+excel_paths_tbl <- fs::dir_info("data/bike_sales/")
+
+paths_chr <- excel_paths_tbl %>%
+    pull(path)
+```
+# Programmatically getting Excel files into R
+用fs::dir_info函數將目錄的資料全部讀取
+
+```{r}
+excel_list <- list()
+for (path in paths_chr) {
+    excel_list[[path]] <- read_excel(path)
+}
+excel_list
+```
+# What Not To Do: Don't use for loops
+用 for in 迴圈將檔案重複並全部讀取
+
+```{r}
+excel_list_2 <- paths_chr %>%
+    map(read_excel) %>%
+    set_names(paths_chr)
+```
+#Use map() - Method 1: function name
+用map函數讀取全部檔案
+
+set_names函數 - 將名稱命名
+
+```{r}
+paths_chr %>%
+    map(~ read_excel(.))
+```
+#Use map() - Method 2: Anonymous Function
+用map函數讀取全部檔案
+
+```{r}
+paths_chr %>%
+    map(function(x) read_excel(path = x))
+```
+#Use map() - Function specified with function()
+用map函數讀取全部檔案
+
+```{r}
+excel_sheets("data/bike_sales/bikes.xlsx") %>%
+    map(~ read_excel(path = "data/bike_sales/bikes.xlsx", sheet = .))
+```
+# Reading Excel Sheets
+用map函數讀取全部檔案
+
+```{r}
+bike_orderlines_tbl %>% is.list()
+
+bike_orderlines_tbl %>%
+    map(~ class(.))
+```
+# Column-wise Map
+將資料放入一個空的集合中is.list()
+
+用map函數讀取全部檔案
+
+```{r}
+bike_orderlines_tbl %>%
+    map_chr(~ class(.)[1])
+```
+# Character map
+用map_chr將資料輸出成文字形式
+
+```{r}
+bike_orderlines_tbl %>%
+    map_df(~ class(.)[1]) %>%
+    gather()
+
+bike_orderlines_tbl %>%
+    map_df(~ sum(is.na(.)) / length(.)) %>%
+    gather()
+```
+# Data Frame map
+用map_df將資料輸出成資料格式
+
+map_df(~ sum(is.na(.)) / length(.)) - 計算資料na的比例
+
+```{r}
+excel_tbl <- excel_paths_tbl %>%
+    select(path) %>%
+    mutate(data = path %>% map(read_excel))
+
+excel_list
+excel_tbl
+```
+# Row-wise Map
+用select函數選擇路徑
+
+用mutate函數新增欄位
+
+```{r}
+excel_tbl
+excel_tbl$data
+excel_tbl$data[[3]]
+excel_tbl_unnested <- excel_tbl %>%
+    unnest(data, .id = 'ID') 
+excel_tbl_unnested
+```
+# Unnest
+用unnested將資料合併
+
+unnest(data, .id = 'ID') - 可以看出資料是從哪個部分讀取的
+
+```{r}
+excel_tbl_nested <- excel_tbl_unnested %>%
+    group_by(ID, path) %>%
+    nest()
+
+excel_tbl_nested$data
+```
+# Nest
+nest()將資料還原(合併後的一些資料不會消失，會一起呈現)
+
+```{r}
+x <- rep(NA, 5)
+x
+!is.na(x) %>% all()
+
+y <- c(1:4, NA_real_)
+y
+!is.na(y) %>% all()
+all(!is.na(y))
+
+excel_tbl_nested$data[[1]] %>%
+    select_if(~ !is.na(.) %>% all())
+excel_tbl_nested
+```
+# Mapping Nested List Columns
+用select_if函數排除有na的資料
+
+```{r}
+select_non_na_columns <- function(data) {
+    data %>%
+        select_if(~ !is.na(.) %>% all())
+}
+```
+#Creating a function outside of purrr::map() - Create a function that can be mapped to one element 
+用select_if函數排除有na的資料料
+
+```{r}
+excel_tbl_nested$data[[1]] %>%
+    select_non_na_columns()
+```
+#Creating a function outside of purrr::map() - Extract an element, and test the function
+從excel_tbl_nested$data中選擇沒有na的欄位
+
+```{r}
+excel_tbl_nested_fixed <- excel_tbl_nested %>%
+    mutate(data_fixed = data %>% map(select_non_na_columns))
+
+excel_tbl_nested_fixed$data[[1]]
+```
+#Creating a function outside of purrr::map() - Use mutate() + map()
+mutate函數新增修改後的資料欄位(從select_non_na_columns)
+
+```{r}
+rolling_avg_3_tbl <- bike_orderlines_tbl %>%
+    select(order_date, category_1, category_2, total_price) %>%
+    mutate(order_date = ymd(order_date)) %>%
+    mutate(month_end = ceiling_date(order_date, unit = "month") - period(1, unit = "days")) %>%
+    group_by(category_1, category_2, month_end) %>%
+    summarise(
+        total_price = sum(total_price)
+    ) %>%
+    mutate(rolling_avg_3 = rollmean(total_price, k = 3, fill = NA, align = 'right')) %>%
+    ungroup() %>%
+    mutate(category_2 = as_factor(category_2) %>% fct_reorder2(month_end, total_price)) 
+
+rolling_avg_3_tbl %>%
+    ggplot(aes(month_end, total_price, color = category_2)) +
+    geom_point() +
+    geom_line(aes(y = rolling_avg_3), color = "blue", linetype = 1) +
+    facet_wrap(~ category_2, scales = "free_y") +
+    geom_smooth(method = "loess", se = FALSE, span = 0.2, color = "black") +
+    theme_tq() +
+    scale_color_tq() +
+    scale_y_continuous(labels = scales::dollar_format(scale = 1e-3, suffix = "K"))
+```
+# Code comes from 04_functions_iteration/01_functional_programming
+
+```{r}
+sales_by_m_cross_country_tbl <- rolling_avg_3_tbl %>%
+    filter(category_2 == "Cross Country Race") %>%
+    select(month_end, total_price) %>%
+    mutate(month_end_num = as.numeric(month_end))
+
+sales_by_m_cross_country_tbl %>%
+    ggplot(aes(month_end_num, total_price)) +
+    geom_point() +
+    geom_smooth(method = "loess", span = 0.2, se = FALSE)
+```
+# Data Preparation
+
+```{r}
+fit_loess_cross_country <- sales_by_m_cross_country_tbl %>%
+    loess(total_price ~ month_end_num, data = ., span = 0.2)
+
+fit_loess_cross_country
+```
+# Making a loess model
+
+```{r}
+fit_loess_cross_country %>%
+    broom::augment() %>%
+    ggplot(aes(month_end_num, total_price)) +
+    geom_point() +
+    geom_line(aes(y = .fitted), color = "blue")
+```
+# Working With Broom
+
+```{r}
+rolling_avg_3_tbl_nested <- rolling_avg_3_tbl %>%
+    group_by(category_1, category_2) %>%
+    nest()
+
+rolling_avg_3_tbl_nested$data[[1]]
+data <- rolling_avg_3_tbl_nested$data[[1]]
+
+tidy_loess <- function(data, span = 0.2) {
+    data_formatted <- data %>%
+        select(month_end, total_price) %>%
+        mutate(month_end_num = as.numeric(month_end))
+    fit_loess <- loess(formula = total_price ~ month_end_num, 
+                       data    = data_formatted, 
+                       span    = span)
+    output_tbl <- fit_loess %>%
+        broom::augment() %>%
+        select(.fitted)
+    return(output_tbl)
+}
+```
+# Function To Return Fitted Results
+
+```{r}
+rolling_avg_3_tbl_nested$data[[2]] %>%
+    tidy_loess()
+```
+# Test Function on Single Element
+
+```{r}
+loess_tbl_nested <- rolling_avg_3_tbl_nested %>%
+    mutate(fitted = data %>% map(tidy_loess))
+
+loess_tbl_nested$fitted[[1]]
+
+loess_tbl_nested %>%
+    unnest()
+```
+# Map Functions
+
+```{r}
+loess_tbl_nested %>%
+    unnest() %>%
+    ggplot(aes(month_end, total_price, color = category_2)) +
+    geom_point() +
+    geom_line(aes(y = .fitted), color = "blue", size = 2) +
+    geom_smooth(method = "loess", span = 0.2) +
+    facet_wrap(~ category_2, scales = "free_y") 
+```
+# Visualize Results
+
+
+
